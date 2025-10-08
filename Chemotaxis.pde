@@ -1,3 +1,4 @@
+// game classes
 class Bacterium {
   float x, y, z;
   CFrame cframe;
@@ -64,6 +65,13 @@ class CFrame {
   }
 }
 
+// game functions
+void updateTime() {
+  
+}
+
+
+// util functions 
 color randomColor() {
   return color(randomFloat(0, 255), randomFloat(0, 255), randomFloat(0, 255));
 }
@@ -72,6 +80,12 @@ float randomFloat(float min, float max) {
   return min + (float)(Math.random() * (max - min));
 }
 
+boolean isKeyPressed(char key) {
+  return keysPressed.indexOf(key) >= 0;
+}
+
+// game variables
+ArrayList<Character> keysPressed = ArrayList();
 
 Bacterium[] bacteria = new Bacterium[50];
 
@@ -100,3 +114,12 @@ void draw() {
   }
 }
 
+void keyPressed() {
+  if (isKeyPressed(key)) return;
+  keysPressed.add(key);
+}
+
+void keyReleased() {
+  if (!isKeyPressed(key)) returnl
+  keysPressed.remove(key);
+}
