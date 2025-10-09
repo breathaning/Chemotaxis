@@ -172,6 +172,7 @@ void draw() {
   updateTime();
   updateCamera();
   background(100);
+  noLights();
   lights();
   for (int i = 0; i < bacteria.length; i++) {
     bacteria[i].update();
