@@ -40,9 +40,27 @@ class CFrame {
   }
   
   PVector position() {
-    float[] a = new float[16];
-    a = matrix.get();
-    return new PVector(a[3], a[7], a[11]);
+    float[] m = new float[16];
+    m = matrix.get(m);
+    return new PVector(m[3], m[7], m[11]);
+  }
+
+  CFrame rotation() {
+    CFrame result = this.copy();
+    result.setPosition(new PVector(0, 0, 0));
+    return result;
+  }
+  
+  CFrame setPosition(PVector vector) {
+    float[] m = new float[16];
+    m = matrix.get(m);
+    matrix.set(
+      m[0], m[1], m[2], vector.x,
+      m[4], m[5], m[6], vector.y,
+      m[8], m[9], m[10], vector.z,
+      0, 0, 0, 1
+    );
+    return this;
   }
   
   CFrame translateGlobal(PVector translation) {
@@ -50,16 +68,11 @@ class CFrame {
     return this;
   }
   
-  CFrame translateLocal(PVector v) {
-    float[] a = new float[16];
-    a = matrix.get();
-    PVector fv = matrix.mult(v, new PVector(0, 0, 0));
-    matrix.set(
-      a[0], a[1], a[2], fv.x,
-      a[4], a[5], a[6], fv.y,
-      a[8], a[9], a[10], fv.z,
-      0, 0, 0, 1
-    );
+  CFrame translateLocal(PVector vector) {
+    float[] m = new float[16];
+    m = matrix.get(m);
+    PVector translatedVector = matrix.mult(vector, new PVector(0, 0, 0));
+    setPosition(translatedVector);
     return this;
   }
   
@@ -68,6 +81,10 @@ class CFrame {
     matrix.rotateY(rotation.y);
     matrix.rotateZ(rotation.z);
     return this;
+  }
+
+  PVector vectorToGlobalSpace(PVector vector) {
+    return rotation().matrix.mult(vector, new PVector(0, 0, 0));
   }
 }
 
@@ -99,11 +116,12 @@ void updateCamera() {
   CFrame cameraCenterCFrame = cameraCFrame.copy();
   cameraCenterCFrame.translateLocal(new PVector(0, 0, 1));
   PVector cameraCenter = cameraCenterCFrame.position();
+  PVector upVector = cameraCFrame.vectorToGlobalSpace(new PVector(0, 1, 0));
   camera(
     cameraPosition.x, cameraPosition.y, cameraPosition.z, 
     cameraCenter.x, cameraCenter.y, cameraCenter.z,
-    0, 1, 0
-  )
+    upVector.x, upVector.y, upVector.z
+  );
 }
 
 
@@ -131,6 +149,7 @@ CFrame cameraCFrame = new CFrame();
 }
 
 void setup() {
+  frameRate(240);
   size(750, 750, P3D);
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
@@ -173,5 +192,6 @@ void mouseReleased() {
 void mouseDragged() {
   PVector rotation = new PVector(mouseY - pmouseY, mouseX - pmouseX, 0);
   rotation.mult(-0.01);
+  cameraCFrame.matrix.print();
   cameraCFrame.rotateEuler(rotation);
 }
