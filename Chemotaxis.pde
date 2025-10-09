@@ -141,7 +141,7 @@ boolean isKeyPressed(char key) {
 // game variables
 ArrayList<Character> keysPressed = new ArrayList();
 
-Bacterium[] bacteria = new Bacterium[50];
+Bacterium[] bacteria = new Bacterium[500];
 
 CFrame cameraCFrame = new CFrame();
 {
@@ -154,11 +154,21 @@ void setup() {
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
-    bacteria[i] = new Bacterium((float)Math.random() * width, (float)Math.random() * height, (float)Math.random() * height, randomColor());
+    PVector position = cframe.vectorToGlobalSpace(new PVector(0, 0, randomFloat(0, (width + height) / 2)));
+    bacteria[i] = new Bacterium(position.x, position.y, position.z, randomColor());
   }
 }
 
 void draw() {
+  if (mousePressed) {
+    float fov = PI/3.0;
+    float cameraZ = (height/2.0) / tan(fov/2.0);
+    perspective(fov, float(width)/float(height) * (float)Math.pow(2, Math.sin((float)millis() / 1000)), cameraZ/10.0, cameraZ*10.0);
+  } else {
+    float fov = PI/3.0;
+    float cameraZ = (height/2.0) / tan(fov/2.0);
+    perspective(fov, float(width)/float(height), cameraZ/10.0, cameraZ*10.0);
+  }
   updateTime();
   updateCamera();
   background(100);
@@ -172,13 +182,13 @@ void draw() {
 }
 
 void keyPressed() {
-  if (isKeyPressed(key)) return;
-  keysPressed.add(key);
+  if (isKeyPressed((Character)key)) return;
+  keysPressed.add((Character)key);
 }
 
 void keyReleased() {
-  if (!isKeyPressed(key)) return;
-  keysPressed.remove(key);
+  if (!isKeyPressed((Character)key)) return;
+  keysPressed.remove((Character)key);
 }
 
 void mousePressed() {
