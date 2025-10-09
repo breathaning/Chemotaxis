@@ -154,7 +154,7 @@ void setup() {
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
-    float radius = Math.sqrt(randomFloat(0, (width + height) / 2));
+    float radius = (float)Math.sqrt(Math.random()) * (width + height) / 2;
     PVector position = cframe.vectorToGlobalSpace(new PVector(0, 0, radius));
     bacteria[i] = new Bacterium(position.x, position.y, position.z, randomColor());
   }
