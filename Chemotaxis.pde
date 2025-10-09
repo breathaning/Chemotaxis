@@ -22,7 +22,7 @@ class Bacterium {
     noStroke();
     PVector v = cframe.position();
     translate(v.x, v.y, v.z);
-    sphere(5);
+    sphere(10);
   }
 }
 
@@ -192,6 +192,5 @@ void mouseReleased() {
 void mouseDragged() {
   PVector rotation = new PVector(mouseY - pmouseY, mouseX - pmouseX, 0);
   rotation.mult(-0.01);
-  cameraCFrame.matrix.print();
   cameraCFrame.rotateEuler(rotation);
 }
