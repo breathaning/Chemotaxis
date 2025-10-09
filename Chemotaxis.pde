@@ -172,8 +172,13 @@ void draw() {
   updateTime();
   updateCamera();
   background(100);
-  noLights();
-  lights();
+  {
+    PVector cameraPosition = cameraCFrame.position();
+    pushMatrix();
+    translate(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+    lights();
+    popMatrix();
+  }
   for (int i = 0; i < bacteria.length; i++) {
     bacteria[i].update();
     pushMatrix();
