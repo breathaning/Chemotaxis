@@ -2,7 +2,7 @@
 class Bacterium {
   float x, y, z;
   CFrame cframe;
-  color colour;
+  color colour; 
   Bacterium(float x, float y, float z, color colour) {
     this.x = x;
     this.y = y;
