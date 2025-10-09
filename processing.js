@@ -3048,7 +3048,7 @@
       get: function() {
         var outgoing = new PMatrix3D;
         outgoing.set(this.elements);
-        return outgoing
+        return outgoing.elements
       },
       reset: function() {
         this.elements = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]

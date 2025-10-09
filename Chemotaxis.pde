@@ -35,7 +35,7 @@ class CFrame {
   
   PVector position() {
     float[] a = new float[16];
-    matrix.get(a);
+    a = matrix.get(a);
     return new PVector(a[3], a[7], a[11]);
   }
   
@@ -46,7 +46,7 @@ class CFrame {
   
   CFrame translateLocal(PVector v) {
     float[] a = new float[16];
-    matrix.get(a);
+    a = matrix.get(a);
     PVector fv = matrix.mult(v, new PVector(0, 0, 0));
     matrix.set(
       a[0], a[1], a[2], fv.x,
@@ -85,7 +85,7 @@ boolean isKeyPressed(char key) {
 }
 
 // game variables
-ArrayList<Character> keysPressed = ArrayList();
+ArrayList<Character> keysPressed = new ArrayList();
 
 Bacterium[] bacteria = new Bacterium[50];
 
@@ -95,7 +95,7 @@ CFrame cameraCFrame = new CFrame();
 }
 
 void setup() {
-  size(500, 500, P3D);
+  size(750, 750, P3D);
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
@@ -120,6 +120,6 @@ void keyPressed() {
 }
 
 void keyReleased() {
-  if (!isKeyPressed(key)) returnl
+  if (!isKeyPressed(key)) return;
   keysPressed.remove(key);
 }
