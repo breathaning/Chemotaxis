@@ -32,10 +32,16 @@ class CFrame {
   CFrame() {
     matrix = new PMatrix3D();
   }
+
+  CFrame copy() {
+    CFrame clone = new CFrame();
+    clone.matrix.set(matrix.get());
+    return clone;
+  }
   
   PVector position() {
     float[] a = new float[16];
-    a = matrix.get(a);
+    a = matrix.get();
     return new PVector(a[3], a[7], a[11]);
   }
   
@@ -46,7 +52,7 @@ class CFrame {
   
   CFrame translateLocal(PVector v) {
     float[] a = new float[16];
-    a = matrix.get(a);
+    a = matrix.get();
     PVector fv = matrix.mult(v, new PVector(0, 0, 0));
     matrix.set(
       a[0], a[1], a[2], fv.x,
@@ -70,6 +76,36 @@ void updateTime() {
   
 }
 
+void updateCamera() {
+  int left = 0;
+  if (isKeyPressed('a')) left++;
+  if (isKeyPressed('d')) left--;
+
+  int forward = 0;
+  if (isKeyPressed('w')) forward++;
+  if (isKeyPressed('s')) forward--;
+
+  int up = 0;
+
+  int speed = 25;
+  PVector localDirection = new PVector(left, 0, forward);
+  localDirection.mult(speed);
+  cameraCFrame.translateLocal(localDirection);
+  PVector globalDirection = new PVector(0, up, 0);
+  globalDirection.mult(speed);
+  cameraCFrame.translateGlobal(globalDirection);
+
+  PVector cameraPosition = cameraCFrame.position();
+  CFrame cameraCenterCFrame = cameraCFrame.copy();
+  cameraCenterCFrame.translateLocal(new PVector(0, 0, 1));
+  PVector cameraCenter = cameraCenterCFrame.position();
+  camera(
+    cameraPosition.x, cameraPosition.y, cameraPosition.z, 
+    cameraCenter.x, cameraCenter.y, cameraCenter.z,
+    0, 1, 0
+  )
+}
+
 
 // util functions 
 color randomColor() {
@@ -91,7 +127,7 @@ Bacterium[] bacteria = new Bacterium[50];
 
 CFrame cameraCFrame = new CFrame();
 {
-  cameraCFrame.translateGlobal(new PVector(0, 0, -10));
+  cameraCFrame.translateGlobal(new PVector(0, 0, -100));
 }
 
 void setup() {
@@ -104,6 +140,8 @@ void setup() {
 }
 
 void draw() {
+  updateTime();
+  updateCamera();
   background(100);
   lights();
   for (int i = 0; i < bacteria.length; i++) {
@@ -122,4 +160,18 @@ void keyPressed() {
 void keyReleased() {
   if (!isKeyPressed(key)) return;
   keysPressed.remove(key);
+}
+
+void mousePressed() {
+  noCursor();
+}
+
+void mouseReleased() {
+  cursor();
+}
+
+void mouseDragged() {
+  PVector rotation = new PVector(mouseY - pmouseY, mouseX - pmouseX, 0);
+  rotation.mult(-0.01);
+  cameraCFrame.rotateEuler(rotation);
 }

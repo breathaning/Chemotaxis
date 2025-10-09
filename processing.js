@@ -8330,26 +8330,26 @@
         enabled = true
       }
     })();
-    attachEventHandler(curElement, "mousemove", function(e) {
-      updateMousePosition(curElement, e);
+    attachEventHandler(window, "mousemove", function(e) {
+      updateMousePosition(window, e);
       if (typeof p.mouseMoved === "function" && !p.__mousePressed) p.mouseMoved();
       if (typeof p.mouseDragged === "function" && p.__mousePressed) {
         p.mouseDragged();
         p.mouseDragging = true
       }
     });
-    attachEventHandler(curElement, "mouseout", function(e) {
+    attachEventHandler(window, "mouseout", function(e) {
       if (typeof p.mouseOut === "function") p.mouseOut()
     });
-    attachEventHandler(curElement, "mouseover", function(e) {
-      updateMousePosition(curElement, e);
+    attachEventHandler(window, "mouseover", function(e) {
+      updateMousePosition(window, e);
       if (typeof p.mouseOver === "function") p.mouseOver()
     });
     curElement.onmousedown = function() {
-      curElement.focus();
+      //curElement.focus();
       return false
     };
-    attachEventHandler(curElement, "mousedown", function(e) {
+    attachEventHandler(window, "mousedown", function(e) {
       p.__mousePressed = true;
       p.mouseDragging = false;
       switch (e.which) {
@@ -8365,7 +8365,7 @@
       }
       if (typeof p.mousePressed === "function") p.mousePressed()
     });
-    attachEventHandler(curElement, "mouseup", function(e) {
+    attachEventHandler(window, "mouseup", function(e) {
       p.__mousePressed = false;
       if (typeof p.mouseClicked === "function" && !p.mouseDragging) p.mouseClicked();
       if (typeof p.mouseReleased === "function") p.mouseReleased()
@@ -10034,7 +10034,7 @@
     this.attachFunction = attachFunction;
     this.options = {
       pauseOnBlur: false,
-      globalKeyEvents: false
+      globalKeyEvents: true
     };
     this.onLoad = nop;
     this.onSetup = nop;
