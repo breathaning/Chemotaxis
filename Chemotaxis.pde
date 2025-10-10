@@ -1,4 +1,4 @@
-// game classes
+// game classes 
 class Bacterium {
   float x, y, z;
   CFrame cframe;
