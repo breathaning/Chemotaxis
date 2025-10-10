@@ -1,3 +1,7 @@
+// constants
+final int SIMULATION_RATE = 60;
+final float SIMULATION_INTERVAL = 1f / SIMULATION_RATE;
+
 // game classes 
 class Bacterium {
   float x, y, z;
@@ -50,6 +54,10 @@ class CFrame {
     result.setPosition(new PVector(0, 0, 0));
     return result;
   }
+
+  PVector lookVector() {
+    return vectorToGlobalSpace(new PVector(0, 0, 1));
+  }
   
   CFrame setPosition(PVector vector) {
     float[] m = new float[16];
@@ -90,7 +98,10 @@ class CFrame {
 
 // game functions
 void updateTime() {
-  
+  float oldSeconds = seconds;
+  seconds = (float)millis() / 1000;
+  deltaSeconds = seconds - oldSeconds;
+  deltaTick = deltaSeconds / SIMULATION_INTERVAL;
 }
 
 void updateCamera() {
@@ -106,10 +117,10 @@ void updateCamera() {
 
   int speed = 25;
   PVector localDirection = new PVector(left, 0, forward);
-  localDirection.mult(speed);
+  localDirection.mult(speed * deltaTick);
   cameraCFrame.translateLocal(localDirection);
   PVector globalDirection = new PVector(0, up, 0);
-  globalDirection.mult(speed);
+  globalDirection.mult(speed * deltaTick);
   cameraCFrame.translateGlobal(globalDirection);
 
   PVector cameraPosition = cameraCFrame.position();
@@ -139,6 +150,10 @@ boolean isKeyPressed(char key) {
 }
 
 // game variables
+float seconds = 0;
+float deltaSeconds = 0;
+float deltaTick = 0;
+
 ArrayList<Character> keysPressed = new ArrayList();
 
 Bacterium[] bacteria = new Bacterium[500];
@@ -175,9 +190,15 @@ void draw() {
   background(100);
   {
     PVector cameraPosition = cameraCFrame.position();
+    PVector cameraLookVector = cameraCFrame.lookVector();
     pushMatrix();
     translate(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+    noLights();
     lights();
+    directionalLight(128, 128, 128, cameraLookVector.x, cameraLookVector.y, cameraLookVector.z);
+    lightSpecular(128, 128, 128);
+    shininess(50);
+    specular(255, 255, 255);
     popMatrix();
   }
   for (int i = 0; i < bacteria.length; i++) {
