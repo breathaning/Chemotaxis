@@ -12,7 +12,7 @@ class Bacterium {
     this.y = y;
     this.z = z;
     this.colour = colour;
-    this.cframe = new CFrame().translateLocal(new PVector(x, y, z));
+    this.cframe = new CFrame().translateGlobal(new PVector(x, y, z));
   }
   
   void update() {
@@ -97,6 +97,13 @@ class CFrame {
 }
 
 // game functions
+void updateInput() {
+  mouseChanged = (pmousePressed != mousePressed);
+  if (mouseChanged) {
+    pmousePressed = mousePressed;
+  }
+}
+
 void updateTime() {
   float oldSeconds = seconds;
   seconds = (float)millis() / 1000;
@@ -133,6 +140,25 @@ void updateCamera() {
     cameraCenter.x, cameraCenter.y, cameraCenter.z,
     upVector.x, upVector.y, upVector.z
   );
+
+  float fov = PI/3.0;
+  float cameraZ = (height / 2f) / Math.tan(fov / 2f);
+  if (mouseChanged) {
+    previousScreenAspectRatio = screenAspectRatio;
+  }
+  if (mousePressed) {
+    float elapsedTime = seconds - lastMousePress - deltaSeconds;
+    float timeScale = 2;
+    float targetScreenAspectRatio = getDefaultScreenAspectRatio() * (float)Math.pow(2, Math.sin(elapsedTime * timeScale));
+    float tweenAlpha = Math.min(1, elapsedTime / 1f);
+    screenAspectRatio += (targetScreenAspectRatio - screenAspectRatio) / 5;
+  } else {
+    float elapsedTime = seconds - lastMouseRelease - deltaSeconds;
+    float timeScale = 4;
+    float tweenAlpha = Math.pow(2, -timeScale * elapsedTime) * Math.sin((elapsedTime * timeScale * TWO_PI) - HALF_PI) + 1;
+    screenAspectRatio = previousScreenAspectRatio + (tweenAlpha * (getDefaultScreenAspectRatio() - previousScreenAspectRatio));
+  }
+  perspective(fov, screenAspectRatio, cameraZ/64f, cameraZ*32f);
 }
 
 
@@ -149,12 +175,23 @@ boolean isKeyPressed(char key) {
   return keysPressed.indexOf(key) >= 0;
 }
 
+float getDefaultScreenAspectRatio() {
+  return (float)width / (float)height;
+}
+
 // game variables
 float seconds = 0;
 float deltaSeconds = 0;
 float deltaTick = 0;
 
+float screenAspectRatio = 1;
+float previousScreenAspectRatio = screenAspectRatio;
+
 ArrayList<Character> keysPressed = new ArrayList();
+boolean mouseChanged = false;
+boolean pmousePressed = false;
+float lastMousePress = 0;
+float lastMouseRelease = 0;
 
 Bacterium[] bacteria = new Bacterium[500];
 
@@ -166,6 +203,9 @@ CFrame cameraCFrame = new CFrame();
 void setup() {
   frameRate(240);
   size(750, 750, P3D);
+
+  screenAspectRatio = getDefaultScreenAspectRatio();
+
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
@@ -176,15 +216,7 @@ void setup() {
 }
 
 void draw() {
-  if (mousePressed) {
-    float fov = PI/3.0;
-    float cameraZ = (height/2.0) / tan(fov/2.0);
-    perspective(fov, float(width)/float(height) * (float)Math.pow(2, Math.sin((float)millis() / 1000)), cameraZ/10.0, cameraZ*10.0);
-  } else {
-    float fov = PI/3.0;
-    float cameraZ = (height/2.0) / tan(fov/2.0);
-    perspective(fov, float(width)/float(height), cameraZ/10.0, cameraZ*10.0);
-  }
+  updateInput();
   updateTime();
   updateCamera();
   background(100);
@@ -220,10 +252,12 @@ void keyReleased() {
 }
 
 void mousePressed() {
+  lastMousePress = seconds;
   noCursor();
 }
 
 void mouseReleased() {
+  lastMouseRelease = seconds;
   cursor();
 }
 
