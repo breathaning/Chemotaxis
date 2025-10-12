@@ -1,9 +1,10 @@
 // constants
 final int SIMULATION_RATE = 60;
 final float SIMULATION_INTERVAL = 1f / SIMULATION_RATE;
+final float CAMERA_MOUSE_SENSITIVITY = 0.008;
 final float CAMERA_SPEED = 15;
 final float BACTERIA_IDLE_SHAKE = 2;
-final float BACTERIA_TERMINAL_SPEED = 1000000;
+final float BACTERIA_TERMINAL_SPEED = 48;
 final float BACTERIA_KINETIC_FRICTION = 0.3;
 final float BIAS_MINIMUM_ACCELERATION = 1;
 final PVector PVECTOR_ZERO = new PVector(0, 0, 0);
@@ -47,10 +48,7 @@ class Bacterium {
       velocity.add(scaledAcceleration);
     }
 
-    if (velocity.get().mag() > BACTERIA_TERMINAL_SPEED) {
-      velocity.normalize();
-      velocity.mult(BACTERIA_TERMINAL_SPEED);
-    }
+    maxVectorMagnitude(velocity, BACTERIA_TERMINAL_SPEED);
 
     PVector scaledVelocity = velocity.get();
     scaledVelocity.mult(deltaTick);
@@ -181,24 +179,40 @@ void updateCamera() {
     upVector.x, upVector.y, upVector.z
   );
 
-  float fov = PI/3.0;
+  float fov = PI / 3.0;
   float cameraZ = (height / 2f) / (float)Math.tan(fov / 2f);
+  float elapsedTime = seconds - lastMouseChange - deltaSeconds;
   if (mouseChanged) {
     previousScreenAspectRatio = screenAspectRatio;
+    if (mousePressed == false) {
+      float sumDistance = 0;
+      PVector biasCenter = getBiasCenter();
+      for (int i = 0; i < bacteria.length; i++) {
+        sumDistance += bacteria[i].cframe.position().dist(biasCenter);
+      }
+      float averageDistance = sumDistance / bacteria.length;
+      playCameraBounce = (averageDistance < 64);
+      if (playCameraBounce) {
+        for (int i = 0; i < bacteria.length; i++) {
+          bacteria[i].velocity.mult(randomFloat(-10, -6));
+          minVectorMagnitude(bacteria[i].velocity, 8);
+          maxVectorMagnitude(bacteria[i].velocity, 32);
+        }
+      }
+    }
   }
   if (mousePressed) {
-    float elapsedTime = seconds - lastMousePress - deltaSeconds;
-    float timeScale = 2;
-    // float tweenAlphaLinear = Math.min(1, elapsedTime / 1f);
-    float targetScreenAspectRatio = getDefaultScreenAspectRatio() * (float)Math.pow(2, Math.sin(elapsedTime * timeScale));
+    float targetScreenAspectRatio = getDefaultScreenAspectRatio() * (float)Math.pow(2, Math.sin(elapsedTime * 2f));
     screenAspectRatio += (targetScreenAspectRatio - screenAspectRatio) / 5;
   } else {
-    float elapsedTime = seconds - lastMouseRelease - deltaSeconds;
-    float timeScale = 4;
-    float tweenAlphaLinear = Math.min(1, elapsedTime / 0.05f);
-    float tweenAlphaElastic = (float)Math.pow(2, -timeScale * elapsedTime) * (float)Math.sin((elapsedTime * timeScale * TWO_PI) - HALF_PI) + 1;
-    float startScreenAspectRatio = previousScreenAspectRatio + (tweenAlphaLinear * (0.01 - previousScreenAspectRatio));
-    screenAspectRatio = startScreenAspectRatio + (tweenAlphaElastic * (getDefaultScreenAspectRatio() - startScreenAspectRatio));
+    if (playCameraBounce) {
+      float tweenAlphaLinear = tweenLinear(elapsedTime * 4f);
+      float tweenAlphaElastic = tweenElastic(elapsedTime * 0.9);
+      float startScreenAspectRatio = previousScreenAspectRatio + (tweenAlphaLinear * (0.01 - previousScreenAspectRatio));
+      screenAspectRatio = startScreenAspectRatio + (tweenAlphaElastic * (getDefaultScreenAspectRatio() - startScreenAspectRatio));
+    } else {
+      screenAspectRatio += (getDefaultScreenAspectRatio() - screenAspectRatio) / 5;
+    }
   }
   perspective(fov, screenAspectRatio, cameraZ/64f, cameraZ*32f);
 }
@@ -218,18 +232,12 @@ void updateLights() {
 
 void updatePhysics(float deltaTick) {
   if (mousePressed) {
-    PVector biasOffset = cameraCFrame.lookVector();
-    biasOffset.mult(1000);
-    PVector biasCenter = cameraCFrame.position();
-    biasCenter.add(biasOffset);
+    PVector biasCenter = getBiasCenter();
     for (int i = 0; i < bacteria.length; i++) {
       PVector acceleration = biasCenter.get();
       acceleration.sub(bacteria[i].cframe.position());
       acceleration.mult(0.001);
-      if (acceleration.mag() < BIAS_MINIMUM_ACCELERATION) { 
-        acceleration.normalize();
-        acceleration.mult(BIAS_MINIMUM_ACCELERATION);
-      }
+      minVectorMagnitude(acceleration, BIAS_MINIMUM_ACCELERATION);
       bacteria[i].acceleration = acceleration;
     }
   } else {
@@ -261,6 +269,39 @@ float getDefaultScreenAspectRatio() {
   return (float)width / (float)height;
 }
 
+float tweenLinear(float t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  return t;
+}
+
+float tweenElastic(float t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  float scale = 10;
+  return (float)Math.pow(2, -t * scale) * (float)Math.sin((t * scale * 21 * PI / 20) - HALF_PI) + 1;
+}
+
+PVector getBiasCenter() {
+  PVector biasOffset = cameraCFrame.lookVector();
+  biasOffset.mult(1000);
+  PVector biasCenter = cameraCFrame.position();
+  biasCenter.add(biasOffset);
+  return biasCenter;
+}
+
+void minVectorMagnitude(PVector v, float min) {
+  if (v.mag() > min) return;
+  v.normalize();
+  v.mult(min);
+}
+
+void maxVectorMagnitude(PVector v, float max) {
+  if (v.mag() < max) return;
+  v.normalize();
+  v.mult(max);
+}
+
 // game variables
 float actualSeconds = 0;
 float seconds = 0;
@@ -272,11 +313,12 @@ float lastSimulation = 0;
 float screenAspectRatio = 1;
 float previousScreenAspectRatio = screenAspectRatio;
 
+boolean playCameraBounce = false;
+
 ArrayList<Character> keysPressed = new ArrayList();
 boolean mouseChanged = false;
 boolean pmousePressed = false;
-float lastMousePress = 0;
-float lastMouseRelease = 0;
+float lastMouseChange = 0;
 
 Bacterium[] bacteria = new Bacterium[500];
 
@@ -287,7 +329,7 @@ CFrame cameraCFrame = new CFrame();
 
 void setup() {
   frameRate(240);
-  size(750, 750, P3D);
+  size(1200, 800, P3D);
 
   screenAspectRatio = getDefaultScreenAspectRatio();
 
@@ -304,10 +346,11 @@ void draw() {
   updateTime();
   updateInput();
   updateCamera();
-  background(100);
-  updateLights();
 
   updatePhysics(deltaTick);
+  
+  background(100);
+  updateLights();
   for (int i = 0; i < bacteria.length; i++) {
     pushMatrix();
     bacteria[i].show();
@@ -326,17 +369,17 @@ void keyReleased() {
 }
 
 void mousePressed() {
-  lastMousePress = seconds;
+  lastMouseChange = seconds;
   noCursor();
 }
 
 void mouseReleased() {
-  lastMouseRelease = seconds;
+  lastMouseChange = seconds;
   cursor();
 }
 
 void mouseDragged() {
   PVector rotation = new PVector(mouseY - pmouseY, mouseX - pmouseX, 0);
-  rotation.mult(-0.01);
+  rotation.mult(-CAMERA_MOUSE_SENSITIVITY);
   cameraCFrame.rotateEuler(rotation);
 }
