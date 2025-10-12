@@ -1,24 +1,64 @@
 // constants
 final int SIMULATION_RATE = 60;
 final float SIMULATION_INTERVAL = 1f / SIMULATION_RATE;
+final float CAMERA_SPEED = 15;
+final float BACTERIA_IDLE_SHAKE = 2;
+final float BACTERIA_TERMINAL_SPEED = 1000000;
+final float BACTERIA_KINETIC_FRICTION = 0.3;
+final float BIAS_MINIMUM_ACCELERATION = 1;
+final PVector PVECTOR_ZERO = new PVector(0, 0, 0);
+final PVector PVECTOR_X = new PVector(1, 0, 0);
+final PVector PVECTOR_Y = new PVector(0, 1, 0);
+final PVector PVECTOR_Z = new PVector(0, 0, 1);
 
 // game classes 
 class Bacterium {
   float x, y, z;
   CFrame cframe;
-  color colour; 
+  color colour;
+  PVector velocity;
+  PVector acceleration;
+
   Bacterium(float x, float y, float z, color colour) {
     this.x = x;
     this.y = y;
     this.z = z;
     this.colour = colour;
     this.cframe = new CFrame().translateGlobal(new PVector(x, y, z));
+    this.velocity = PVECTOR_ZERO.get();
+    this.acceleration = PVECTOR_ZERO.get();
   }
   
-  void update() {
-    float step = 5;
+  void update(float deltaTick) {
+    PVector velocityDirection = velocity.get();
+    velocityDirection.normalize();
+    PVector frictionAcceleration = velocityDirection.get();
+    frictionAcceleration.mult(BACTERIA_KINETIC_FRICTION);
+
+    PVector netAcceleration = acceleration.get();
+    netAcceleration.sub(frictionAcceleration);
+
+    PVector scaledAcceleration = netAcceleration;
+    scaledAcceleration.mult(deltaTick);
+
+    if (acceleration.mag() == 0  && velocity.mag() < frictionAcceleration.mag()) {
+      velocity.mult(0);
+    } else {
+      velocity.add(scaledAcceleration);
+    }
+
+    if (velocity.get().mag() > BACTERIA_TERMINAL_SPEED) {
+      velocity.normalize();
+      velocity.mult(BACTERIA_TERMINAL_SPEED);
+    }
+
+    PVector scaledVelocity = velocity.get();
+    scaledVelocity.mult(deltaTick);
+    cframe.translateGlobal(scaledVelocity);
+
+    // random shake
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
-    cframe.translateLocal(new PVector(0, 0, randomFloat(0, step)));
+    cframe.translateLocal(new PVector(0, 0, randomFloat(0, BACTERIA_IDLE_SHAKE)));
   }
   
   void show() {
@@ -51,12 +91,12 @@ class CFrame {
 
   CFrame rotation() {
     CFrame result = this.copy();
-    result.setPosition(new PVector(0, 0, 0));
+    result.setPosition(PVECTOR_ZERO);
     return result;
   }
 
   PVector lookVector() {
-    return vectorToGlobalSpace(new PVector(0, 0, 1));
+    return vectorToGlobalSpace(PVECTOR_Z);
   }
   
   CFrame setPosition(PVector vector) {
@@ -72,15 +112,14 @@ class CFrame {
   }
   
   CFrame translateGlobal(PVector translation) {
-    matrix.translate(translation.x, translation.y, translation.z);
+    PVector translatedPosition = position();
+    translatedPosition.add(translation);
+    setPosition(translatedPosition);
     return this;
   }
   
-  CFrame translateLocal(PVector vector) {
-    float[] m = new float[16];
-    m = matrix.get(m);
-    PVector translatedVector = matrix.mult(vector, new PVector(0, 0, 0));
-    setPosition(translatedVector);
+  CFrame translateLocal(PVector translation) {
+    matrix.translate(translation.x, translation.y, translation.z);
     return this;
   }
   
@@ -92,12 +131,13 @@ class CFrame {
   }
 
   PVector vectorToGlobalSpace(PVector vector) {
-    return rotation().matrix.mult(vector, new PVector(0, 0, 0));
+    return rotation().matrix.mult(vector.get(), new PVector(0, 0, 0));
   }
 }
 
 // game functions
 void updateInput() {
+  // mouse
   mouseChanged = (pmousePressed != mousePressed);
   if (mouseChanged) {
     pmousePressed = mousePressed;
@@ -105,10 +145,11 @@ void updateInput() {
 }
 
 void updateTime() {
-  float oldSeconds = seconds;
-  seconds = (float)millis() / 1000;
-  deltaSeconds = seconds - oldSeconds;
+  float oldActualSeconds = actualSeconds;
+  actualSeconds = (float)millis() / 1000;
+  deltaSeconds = Math.min(SIMULATION_INTERVAL, actualSeconds - oldActualSeconds);
   deltaTick = deltaSeconds / SIMULATION_INTERVAL;
+  seconds += deltaSeconds;
 }
 
 void updateCamera() {
@@ -122,19 +163,18 @@ void updateCamera() {
 
   int up = 0;
 
-  int speed = 25;
   PVector localDirection = new PVector(left, 0, forward);
-  localDirection.mult(speed * deltaTick);
+  localDirection.mult(CAMERA_SPEED * deltaTick);
   cameraCFrame.translateLocal(localDirection);
   PVector globalDirection = new PVector(0, up, 0);
-  globalDirection.mult(speed * deltaTick);
+  globalDirection.mult(CAMERA_SPEED * deltaTick);
   cameraCFrame.translateGlobal(globalDirection);
 
   PVector cameraPosition = cameraCFrame.position();
   CFrame cameraCenterCFrame = cameraCFrame.copy();
   cameraCenterCFrame.translateLocal(new PVector(0, 0, 1));
   PVector cameraCenter = cameraCenterCFrame.position();
-  PVector upVector = cameraCFrame.vectorToGlobalSpace(new PVector(0, 1, 0));
+  PVector upVector = cameraCFrame.vectorToGlobalSpace(PVECTOR_Y);
   camera(
     cameraPosition.x, cameraPosition.y, cameraPosition.z, 
     cameraCenter.x, cameraCenter.y, cameraCenter.z,
@@ -142,23 +182,65 @@ void updateCamera() {
   );
 
   float fov = PI/3.0;
-  float cameraZ = (height / 2f) / Math.tan(fov / 2f);
+  float cameraZ = (height / 2f) / (float)Math.tan(fov / 2f);
   if (mouseChanged) {
     previousScreenAspectRatio = screenAspectRatio;
   }
   if (mousePressed) {
     float elapsedTime = seconds - lastMousePress - deltaSeconds;
     float timeScale = 2;
+    // float tweenAlphaLinear = Math.min(1, elapsedTime / 1f);
     float targetScreenAspectRatio = getDefaultScreenAspectRatio() * (float)Math.pow(2, Math.sin(elapsedTime * timeScale));
-    float tweenAlpha = Math.min(1, elapsedTime / 1f);
     screenAspectRatio += (targetScreenAspectRatio - screenAspectRatio) / 5;
   } else {
     float elapsedTime = seconds - lastMouseRelease - deltaSeconds;
     float timeScale = 4;
-    float tweenAlpha = Math.pow(2, -timeScale * elapsedTime) * Math.sin((elapsedTime * timeScale * TWO_PI) - HALF_PI) + 1;
-    screenAspectRatio = previousScreenAspectRatio + (tweenAlpha * (getDefaultScreenAspectRatio() - previousScreenAspectRatio));
+    float tweenAlphaLinear = Math.min(1, elapsedTime / 0.05f);
+    float tweenAlphaElastic = (float)Math.pow(2, -timeScale * elapsedTime) * (float)Math.sin((elapsedTime * timeScale * TWO_PI) - HALF_PI) + 1;
+    float startScreenAspectRatio = previousScreenAspectRatio + (tweenAlphaLinear * (0.01 - previousScreenAspectRatio));
+    screenAspectRatio = startScreenAspectRatio + (tweenAlphaElastic * (getDefaultScreenAspectRatio() - startScreenAspectRatio));
   }
   perspective(fov, screenAspectRatio, cameraZ/64f, cameraZ*32f);
+}
+
+void updateLights() {
+  PVector cameraPosition = cameraCFrame.position();
+  pushMatrix();
+  translate(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+  noLights();
+  lights();
+  directionalLight(128, 128, 128, 0, 1, 0);
+  lightSpecular(128, 128, 128);
+  shininess(50);
+  specular(255, 255, 255);
+  popMatrix();
+}
+
+void updatePhysics(float deltaTick) {
+  if (mousePressed) {
+    PVector biasOffset = cameraCFrame.lookVector();
+    biasOffset.mult(1000);
+    PVector biasCenter = cameraCFrame.position();
+    biasCenter.add(biasOffset);
+    for (int i = 0; i < bacteria.length; i++) {
+      PVector acceleration = biasCenter.get();
+      acceleration.sub(bacteria[i].cframe.position());
+      acceleration.mult(0.001);
+      if (acceleration.mag() < BIAS_MINIMUM_ACCELERATION) { 
+        acceleration.normalize();
+        acceleration.mult(BIAS_MINIMUM_ACCELERATION);
+      }
+      bacteria[i].acceleration = acceleration;
+    }
+  } else {
+    for (int i = 0; i < bacteria.length; i++) {
+      bacteria[i].acceleration = PVECTOR_ZERO.get();
+    }
+  }
+
+  for (int i = 0; i < bacteria.length; i++) {
+    bacteria[i].update(deltaTick);
+  }
 }
 
 
@@ -180,9 +262,12 @@ float getDefaultScreenAspectRatio() {
 }
 
 // game variables
+float actualSeconds = 0;
 float seconds = 0;
 float deltaSeconds = 0;
 float deltaTick = 0;
+
+float lastSimulation = 0;
 
 float screenAspectRatio = 1;
 float previousScreenAspectRatio = screenAspectRatio;
@@ -216,25 +301,14 @@ void setup() {
 }
 
 void draw() {
-  updateInput();
   updateTime();
+  updateInput();
   updateCamera();
   background(100);
-  {
-    PVector cameraPosition = cameraCFrame.position();
-    PVector cameraLookVector = cameraCFrame.lookVector();
-    pushMatrix();
-    translate(cameraPosition.x, cameraPosition.y, cameraPosition.z);
-    noLights();
-    lights();
-    directionalLight(128, 128, 128, cameraLookVector.x, cameraLookVector.y, cameraLookVector.z);
-    lightSpecular(128, 128, 128);
-    shininess(50);
-    specular(255, 255, 255);
-    popMatrix();
-  }
+  updateLights();
+
+  updatePhysics(deltaTick);
   for (int i = 0; i < bacteria.length; i++) {
-    bacteria[i].update();
     pushMatrix();
     bacteria[i].show();
     popMatrix();
