@@ -3,7 +3,7 @@ final int SIMULATION_RATE = 60;
 final float SIMULATION_INTERVAL = 1f / SIMULATION_RATE;
 final float CAMERA_MOUSE_SENSITIVITY = 0.008;
 final float CAMERA_SPEED = 15;
-final float BACTERIA_IDLE_SHAKE = 2;
+final float BACTERIA_IDLE_SHAKE = 16;
 final float BACTERIA_TERMINAL_SPEED = 48;
 final float BACTERIA_KINETIC_FRICTION = 0.3;
 final float BIAS_MINIMUM_ACCELERATION = 1;
@@ -14,13 +14,13 @@ final PVector PVECTOR_Z = new PVector(0, 0, 1);
 
 // game classes 
 class Bacterium {
-  float x, y, z;
+  int x, y, z;
   CFrame cframe;
   color colour;
   PVector velocity;
   PVector acceleration;
 
-  Bacterium(float x, float y, float z, color colour) {
+  Bacterium(int x, int y, int z, color colour) {
     this.x = x;
     this.y = y;
     this.z = z;
@@ -30,7 +30,7 @@ class Bacterium {
     this.acceleration = PVECTOR_ZERO.get();
   }
   
-  void update(float deltaTick) {
+  void move(float deltaTick) {
     PVector velocityDirection = velocity.get();
     velocityDirection.normalize();
     PVector frictionAcceleration = velocityDirection.get();
@@ -56,14 +56,19 @@ class Bacterium {
 
     // random shake
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
-    cframe.translateLocal(new PVector(0, 0, randomFloat(0, BACTERIA_IDLE_SHAKE)));
+    cframe.translateLocal(new PVector(0, 0, randomFloat(0, BACTERIA_IDLE_SHAKE * deltaTick)));
+
+    // yes
+    PVector position = cframe.position();
+    x = (int)position.x;
+    y = (int)position.y;
+    z = (int)position.z;
   }
   
   void show() {
     fill(colour);
     noStroke();
-    PVector v = cframe.position();
-    translate(v.x, v.y, v.z);
+    translate(x, y, z);
     sphere(10);
   }
 }
@@ -247,7 +252,7 @@ void updatePhysics(float deltaTick) {
   }
 
   for (int i = 0; i < bacteria.length; i++) {
-    bacteria[i].update(deltaTick);
+    bacteria[i].move(deltaTick);
   }
 }
 
@@ -290,16 +295,16 @@ PVector getBiasCenter() {
   return biasCenter;
 }
 
-void minVectorMagnitude(PVector v, float min) {
-  if (v.mag() > min) return;
-  v.normalize();
-  v.mult(min);
+void minVectorMagnitude(PVector vector, float min) {
+  if (vector.mag() > min) return;
+  vector.normalize();
+  vector.mult(min);
 }
 
-void maxVectorMagnitude(PVector v, float max) {
-  if (v.mag() < max) return;
-  v.normalize();
-  v.mult(max);
+void maxVectorMagnitude(PVector vector, float max) {
+  if (vector.mag() < max) return;
+  vector.normalize();
+  vector.mult(max);
 }
 
 // game variables
@@ -338,7 +343,7 @@ void setup() {
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
     float radius = (float)Math.sqrt(Math.random()) * (width + height) / 2;
     PVector position = cframe.vectorToGlobalSpace(new PVector(0, 0, radius));
-    bacteria[i] = new Bacterium(position.x, position.y, position.z, randomColor());
+    bacteria[i] = new Bacterium((int)position.x, (int)position.y, (int)position.z, randomColor());
   }
 }
 
