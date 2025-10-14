@@ -3,9 +3,11 @@ final int SIMULATION_RATE = 60;
 final float SIMULATION_INTERVAL = 1f / SIMULATION_RATE;
 final float CAMERA_MOUSE_SENSITIVITY = 0.008;
 final float CAMERA_SPEED = 15;
+final PVector CAMERA_START_SETPOINT = new PVector(0, 0, -100);
 final float BACTERIA_IDLE_SHAKE = 16;
 final float BACTERIA_TERMINAL_SPEED = 48;
 final float BACTERIA_KINETIC_FRICTION = 0.3;
+final float BIAS_DISTANCE = 1000;
 final float BIAS_MINIMUM_ACCELERATION = 1;
 final PVector PVECTOR_ZERO = new PVector(0, 0, 0);
 final PVector PVECTOR_X = new PVector(1, 0, 0);
@@ -139,6 +141,14 @@ class CFrame {
 }
 
 // game functions
+void updateTime() {
+  float oldActualSeconds = actualSeconds;
+  actualSeconds = (float)millis() / 1000;
+  deltaSeconds = Math.min(SIMULATION_INTERVAL, actualSeconds - oldActualSeconds);
+  deltaTick = deltaSeconds / SIMULATION_INTERVAL;
+  seconds += deltaSeconds;
+}
+
 void updateInput() {
   // mouse
   mouseChanged = (pmousePressed != mousePressed);
@@ -147,12 +157,47 @@ void updateInput() {
   }
 }
 
-void updateTime() {
-  float oldActualSeconds = actualSeconds;
-  actualSeconds = (float)millis() / 1000;
-  deltaSeconds = Math.min(SIMULATION_INTERVAL, actualSeconds - oldActualSeconds);
-  deltaTick = deltaSeconds / SIMULATION_INTERVAL;
-  seconds += deltaSeconds;
+void updatePhysics(float deltaTick) {
+  if (mousePressed) {
+    PVector biasCenter = getBiasCenter();
+    for (int i = 0; i < bacteria.length; i++) {
+      PVector acceleration = biasCenter.get();
+      acceleration.sub(bacteria[i].cframe.position());
+      acceleration.mult(0.001);
+      minVectorMagnitude(acceleration, BIAS_MINIMUM_ACCELERATION);
+      bacteria[i].acceleration = acceleration;
+    }
+  } else {
+    for (int i = 0; i < bacteria.length; i++) {
+      bacteria[i].acceleration = PVECTOR_ZERO.get();
+    }
+  }
+
+  for (int i = 0; i < bacteria.length; i++) {
+    bacteria[i].move(deltaTick);
+  }
+}
+
+void updateBurstState() {
+  float sumDistance = 0;
+  PVector biasCenter = getBiasCenter();
+  for (int i = 0; i < bacteria.length; i++) {
+    sumDistance += bacteria[i].cframe.position().dist(biasCenter);
+  }
+  float averageDistance = sumDistance / bacteria.length;
+  pcanBurst = canBurst;
+  canBurst = (averageDistance < 64);
+  canBurstChanged = (canBurst != pcanBurst);
+  if (canBurstChanged) {
+    burstStateChangeSeconds = seconds;
+  }
+  if (canBurst && mouseChanged && !mousePressed) {
+    for (int i = 0; i < bacteria.length; i++) {
+      bacteria[i].velocity.mult(randomFloat(-10, -6));
+      minVectorMagnitude(bacteria[i].velocity, 8);
+      maxVectorMagnitude(bacteria[i].velocity, 32);
+    }
+  }
 }
 
 void updateCamera() {
@@ -185,41 +230,51 @@ void updateCamera() {
   );
 
   float fov = PI / 3.0;
-  float cameraZ = (height / 2f) / (float)Math.tan(fov / 2f);
+  float cameraZ = (height / 2f) / (float)Math.tan(fov / 2);
   float elapsedTime = seconds - lastMouseChange - deltaSeconds;
   if (mouseChanged) {
-    previousScreenAspectRatio = screenAspectRatio;
+    pscreenAspectRatio = screenAspectRatio;
     if (mousePressed == false) {
-      float sumDistance = 0;
-      PVector biasCenter = getBiasCenter();
-      for (int i = 0; i < bacteria.length; i++) {
-        sumDistance += bacteria[i].cframe.position().dist(biasCenter);
-      }
-      float averageDistance = sumDistance / bacteria.length;
-      playCameraBounce = (averageDistance < 64);
-      if (playCameraBounce) {
-        for (int i = 0; i < bacteria.length; i++) {
-          bacteria[i].velocity.mult(randomFloat(-10, -6));
-          minVectorMagnitude(bacteria[i].velocity, 8);
-          maxVectorMagnitude(bacteria[i].velocity, 32);
-        }
-      }
+      playCameraBounce = pcanBurst;
     }
   }
   if (mousePressed) {
-    float targetScreenAspectRatio = getDefaultScreenAspectRatio() * (float)Math.pow(2, Math.sin(elapsedTime * 2f));
+    float targetScreenAspectRatio = getDefaultScreenAspectRatio() * (float)Math.pow(2, Math.sin(elapsedTime * 2));
     screenAspectRatio += (targetScreenAspectRatio - screenAspectRatio) / 5;
   } else {
     if (playCameraBounce) {
-      float tweenAlphaLinear = tweenLinear(elapsedTime * 4f);
+      float tweenAlphaLinear = tweenLinear(elapsedTime * 4);
       float tweenAlphaElastic = tweenElastic(elapsedTime * 0.9);
-      float startScreenAspectRatio = previousScreenAspectRatio + (tweenAlphaLinear * (0.01 - previousScreenAspectRatio));
+      float startScreenAspectRatio = pscreenAspectRatio + (tweenAlphaLinear * (0.01 - pscreenAspectRatio));
       screenAspectRatio = startScreenAspectRatio + (tweenAlphaElastic * (getDefaultScreenAspectRatio() - startScreenAspectRatio));
     } else {
       screenAspectRatio += (getDefaultScreenAspectRatio() - screenAspectRatio) / 5;
     }
   }
-  perspective(fov, screenAspectRatio, cameraZ/64f, cameraZ*32f);
+  perspective(fov, screenAspectRatio, cameraZ / 64f, cameraZ * 32f);
+}
+
+void drawBackground() {
+  color targetBackgroundColor;
+  float tweenAlphaLinear;
+
+  if (burstStateChangeSeconds == 0) {
+    targetBackgroundColor = backgroundColor;
+    tweenAlphaLinear = 0;
+  } else if (canBurst) {
+    tweenAlphaLinear = tweenLinear((seconds - burstStateChangeSeconds) * 0.75);
+    targetBackgroundColor = lerpColor(pbackgroundColor, color(200), tweenAlphaLinear);
+  } else {
+    tweenAlphaLinear = tweenLinear((seconds - burstStateChangeSeconds) * 4);
+    targetBackgroundColor = lerpColor(pbackgroundColor, color(100), tweenAlphaLinear);
+  }
+
+  if (canBurstChanged || burstStateChangeSeconds == 0) {
+    pbackgroundColor = backgroundColor;
+  }
+
+  backgroundColor = lerpColor(pbackgroundColor, targetBackgroundColor, tweenAlphaLinear);
+  background(backgroundColor);
 }
 
 void updateLights() {
@@ -234,28 +289,6 @@ void updateLights() {
   specular(255, 255, 255);
   popMatrix();
 }
-
-void updatePhysics(float deltaTick) {
-  if (mousePressed) {
-    PVector biasCenter = getBiasCenter();
-    for (int i = 0; i < bacteria.length; i++) {
-      PVector acceleration = biasCenter.get();
-      acceleration.sub(bacteria[i].cframe.position());
-      acceleration.mult(0.001);
-      minVectorMagnitude(acceleration, BIAS_MINIMUM_ACCELERATION);
-      bacteria[i].acceleration = acceleration;
-    }
-  } else {
-    for (int i = 0; i < bacteria.length; i++) {
-      bacteria[i].acceleration = PVECTOR_ZERO.get();
-    }
-  }
-
-  for (int i = 0; i < bacteria.length; i++) {
-    bacteria[i].move(deltaTick);
-  }
-}
-
 
 // util functions 
 color randomColor() {
@@ -289,7 +322,7 @@ float tweenElastic(float t) {
 
 PVector getBiasCenter() {
   PVector biasOffset = cameraCFrame.lookVector();
-  biasOffset.mult(1000);
+  biasOffset.mult(BIAS_DISTANCE);
   PVector biasCenter = cameraCFrame.position();
   biasCenter.add(biasOffset);
   return biasCenter;
@@ -313,31 +346,43 @@ float seconds = 0;
 float deltaSeconds = 0;
 float deltaTick = 0;
 
-float lastSimulation = 0;
-
+// screen
 float screenAspectRatio = 1;
-float previousScreenAspectRatio = screenAspectRatio;
+float pscreenAspectRatio = screenAspectRatio;
 
-boolean playCameraBounce = false;
-
+// input
 ArrayList<Character> keysPressed = new ArrayList();
 boolean mouseChanged = false;
 boolean pmousePressed = false;
 float lastMouseChange = 0;
 
-Bacterium[] bacteria = new Bacterium[500];
+// sim
+float lastSimulation = 0;
 
+// camera
+boolean playCameraBounce = false;
 CFrame cameraCFrame = new CFrame();
-{
-  cameraCFrame.translateGlobal(new PVector(0, 0, -100));
-}
 
+// main
+Bacterium[] bacteria = new Bacterium[500];
+boolean canBurst = false;
+boolean pcanBurst = canBurst;
+boolean canBurstChanged = false;
+
+// draw
+float burstStateChangeSeconds = 0;
+color backgroundColor = color(100);
+color pbackgroundColor = pbackgroundColor;
+
+// loops
 void setup() {
   frameRate(240);
   size(1200, 800, P3D);
 
   screenAspectRatio = getDefaultScreenAspectRatio();
+  pscreenAspectRatio = screenAspectRatio;
 
+  cameraCFrame.setPosition(CAMERA_START_SETPOINT);
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
     cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
@@ -350,11 +395,12 @@ void setup() {
 void draw() {
   updateTime();
   updateInput();
-  updateCamera();
-
+  
   updatePhysics(deltaTick);
   
-  background(100);
+  updateBurstState();
+  updateCamera();
+  drawBackground();
   updateLights();
   for (int i = 0; i < bacteria.length; i++) {
     pushMatrix();
@@ -363,6 +409,7 @@ void draw() {
   }
 }
 
+// input events
 void keyPressed() {
   if (isKeyPressed((Character)key)) return;
   keysPressed.add((Character)key);
