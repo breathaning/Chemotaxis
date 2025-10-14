@@ -372,7 +372,7 @@ boolean canBurstChanged = false;
 // draw
 float burstStateChangeSeconds = 0;
 color backgroundColor = color(100);
-color pbackgroundColor = pbackgroundColor;
+color pbackgroundColor = backgroundColor;
 
 // loops
 void setup() {
