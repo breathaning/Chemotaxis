@@ -57,14 +57,37 @@ class Bacterium {
     cframe.translateGlobal(scaledVelocity);
 
     // random shake
-    cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
-    cframe.translateLocal(new PVector(0, 0, randomFloat(0, BACTERIA_IDLE_SHAKE * deltaTick)));
-
-    // yes
+    int shake = (int)Math.ceil(BACTERIA_IDLE_SHAKE * deltaTick);
     PVector position = cframe.position();
     x = (int)position.x;
     y = (int)position.y;
     z = (int)position.z;
+    if (!mousePressed) {
+      x += ((float)Math.random() - 0.5f) * shake;
+      y += ((float)Math.random() - 0.5f) * shake;
+      z += ((float)Math.random() - 0.5f) * shake;
+    } else {
+      // add bias if mouse is pressed
+      if (x < biasCenter.x) {
+        x += ((float)Math.random() - 0.3f) * shake;
+      } else {
+        x += ((float)Math.random() - 0.7f) * shake;
+      }
+      if (y < biasCenter.y) {
+        y += ((float)Math.random() - 0.3f) * shake;
+      } else {
+        y += ((float)Math.random() - 0.7f) * shake;
+      }
+      if (z < biasCenter.z) {
+        z += ((float)Math.random() - 0.3f) * shake;
+      } else {
+        z += ((float)Math.random() - 0.7f) * shake;
+      }
+    }
+    
+    
+    cframe.setPosition(new PVector(x, y, z));
+
   }
   
   void show() {
@@ -155,11 +178,15 @@ void updateInput() {
   if (mouseChanged) {
     pmousePressed = mousePressed;
   }
+  
+  PVector biasOffset = cameraCFrame.lookVector();
+  biasOffset.mult(BIAS_DISTANCE);
+  biasCenter = cameraCFrame.position();
+  biasCenter.add(biasOffset);
 }
 
 void updatePhysics(float deltaTick) {
   if (mousePressed) {
-    PVector biasCenter = getBiasCenter();
     for (int i = 0; i < bacteria.length; i++) {
       PVector acceleration = biasCenter.get();
       acceleration.sub(bacteria[i].cframe.position());
@@ -180,7 +207,6 @@ void updatePhysics(float deltaTick) {
 
 void updateBurstState() {
   float sumDistance = 0;
-  PVector biasCenter = getBiasCenter();
   for (int i = 0; i < bacteria.length; i++) {
     sumDistance += bacteria[i].cframe.position().dist(biasCenter);
   }
@@ -320,14 +346,6 @@ float tweenElastic(float t) {
   return (float)Math.pow(2, -t * scale) * (float)Math.sin((t * scale * 21 * PI / 20) - HALF_PI) + 1;
 }
 
-PVector getBiasCenter() {
-  PVector biasOffset = cameraCFrame.lookVector();
-  biasOffset.mult(BIAS_DISTANCE);
-  PVector biasCenter = cameraCFrame.position();
-  biasCenter.add(biasOffset);
-  return biasCenter;
-}
-
 void minVectorMagnitude(PVector vector, float min) {
   if (vector.mag() > min) return;
   vector.normalize();
@@ -368,6 +386,7 @@ Bacterium[] bacteria = new Bacterium[500];
 boolean canBurst = false;
 boolean pcanBurst = canBurst;
 boolean canBurstChanged = false;
+PVector biasCenter;
 
 // draw
 float burstStateChangeSeconds = 0;
