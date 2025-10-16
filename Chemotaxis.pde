@@ -16,13 +16,13 @@ final PVector PVECTOR_Z = new PVector(0, 0, 1);
 
 // game classes 
 class Bacterium {
-  int x, y, z;
+  float x, y, z;
   CFrame cframe;
   color colour;
   PVector velocity;
   PVector acceleration;
 
-  Bacterium(int x, int y, int z, color colour) {
+  Bacterium(float x, float y, float z, color colour) {
     this.x = x;
     this.y = y;
     this.z = z;
@@ -59,29 +59,30 @@ class Bacterium {
     // random shake
     int shake = (int)Math.ceil(BACTERIA_IDLE_SHAKE * deltaTick);
     PVector position = cframe.position();
-    x = (int)position.x;
-    y = (int)position.y;
-    z = (int)position.z;
+    x = position.x;
+    y = position.y;
+    z = position.z;
     if (!mousePressed) {
       x += ((float)Math.random() - 0.5f) * shake;
       y += ((float)Math.random() - 0.5f) * shake;
       z += ((float)Math.random() - 0.5f) * shake;
     } else {
       // add bias if mouse is pressed
+      // creates cool cross effect instead of being completely random
       if (x < biasCenter.x) {
-        x += ((float)Math.random() - 0.3f) * shake;
+        x += ((float)Math.random() - 0.35f) * shake;
       } else {
-        x += ((float)Math.random() - 0.7f) * shake;
+        x += ((float)Math.random() - 0.65f) * shake;
       }
       if (y < biasCenter.y) {
-        y += ((float)Math.random() - 0.3f) * shake;
+        y += ((float)Math.random() - 0.35f) * shake;
       } else {
-        y += ((float)Math.random() - 0.7f) * shake;
+        y += ((float)Math.random() - 0.65f) * shake;
       }
       if (z < biasCenter.z) {
-        z += ((float)Math.random() - 0.3f) * shake;
+        z += ((float)Math.random() - 0.35f) * shake;
       } else {
-        z += ((float)Math.random() - 0.7f) * shake;
+        z += ((float)Math.random() - 0.65f) * shake;
       }
     }
     
@@ -219,6 +220,7 @@ void updateBurstState() {
   }
   if (canBurst && mouseChanged && !mousePressed) {
     for (int i = 0; i < bacteria.length; i++) {
+      bacteria[i].velocity.add(new PVector(randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(-2, 2)))
       bacteria[i].velocity.mult(randomFloat(-10, -6));
       minVectorMagnitude(bacteria[i].velocity, 8);
       maxVectorMagnitude(bacteria[i].velocity, 32);
