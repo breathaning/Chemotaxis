@@ -714,6 +714,9 @@
       get: function() {
         return new PVector(this.x, this.y, this.z)
       },
+      copy: function() {
+        return new PVector(this.x, this.y, this.z)
+      },
       mag: function() {
         var x = this.x,
           y = this.y,

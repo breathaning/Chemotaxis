@@ -16,29 +16,29 @@ final PVector PVECTOR_Z = new PVector(0, 0, 1);
 
 // game classes 
 class Bacterium {
-  float x, y, z;
+  int x, y, z;
   CFrame cframe;
   color colour;
   PVector velocity;
   PVector acceleration;
 
-  Bacterium(float x, float y, float z, color colour) {
+  Bacterium(int x, int y, int z, color colour) {
     this.x = x;
     this.y = y;
     this.z = z;
     this.colour = colour;
     this.cframe = new CFrame().translateGlobal(new PVector(x, y, z));
-    this.velocity = PVECTOR_ZERO.get();
-    this.acceleration = PVECTOR_ZERO.get();
+    this.velocity = PVECTOR_ZERO.copy();
+    this.acceleration = PVECTOR_ZERO.copy();
   }
   
   void move(float deltaTick) {
-    PVector velocityDirection = velocity.get();
+    PVector velocityDirection = velocity.copy();
     velocityDirection.normalize();
-    PVector frictionAcceleration = velocityDirection.get();
+    PVector frictionAcceleration = velocityDirection.copy();
     frictionAcceleration.mult(BACTERIA_KINETIC_FRICTION);
 
-    PVector netAcceleration = acceleration.get();
+    PVector netAcceleration = acceleration.copy();
     netAcceleration.sub(frictionAcceleration);
 
     PVector scaledAcceleration = netAcceleration;
@@ -52,40 +52,39 @@ class Bacterium {
 
     maxVectorMagnitude(velocity, BACTERIA_TERMINAL_SPEED);
 
-    PVector scaledVelocity = velocity.get();
+    PVector scaledVelocity = velocity.copy();
     scaledVelocity.mult(deltaTick);
     cframe.translateGlobal(scaledVelocity);
 
     // random shake
     int shake = (int)Math.ceil(BACTERIA_IDLE_SHAKE * deltaTick);
     PVector position = cframe.position();
-    x = position.x;
-    y = position.y;
-    z = position.z;
+    x = (int)Math.round(position.x);
+    y = (int)Math.round(position.y);
+    z = (int)Math.round(position.z);
     if (!mousePressed) {
-      x += ((float)Math.random() - 0.5f) * shake;
-      y += ((float)Math.random() - 0.5f) * shake;
-      z += ((float)Math.random() - 0.5f) * shake;
+      x = (int)Math.round((float)x + ((float)Math.random() - 0.5f) * shake);
+      y = (int)Math.round((float)y + ((float)Math.random() - 0.5f) * shake);
+      z = (int)Math.round((float)z + ((float)Math.random() - 0.5f) * shake);
     } else {
       // add bias if mouse is pressed
       // creates cool cross effect instead of being completely random
       if (x < biasCenter.x) {
-        x += ((float)Math.random() - 0.35f) * shake;
+        x = (int)Math.round((float)x + ((float)Math.random() - 0.35f) * shake);
       } else {
-        x += ((float)Math.random() - 0.65f) * shake;
+        x = (int)Math.round((float)x + ((float)Math.random() - 0.65f) * shake);
       }
       if (y < biasCenter.y) {
-        y += ((float)Math.random() - 0.35f) * shake;
+        y = (int)Math.round((float)y + ((float)Math.random() - 0.35f) * shake);
       } else {
-        y += ((float)Math.random() - 0.65f) * shake;
+        y = (int)Math.round((float)y + ((float)Math.random() - 0.65f) * shake);
       }
       if (z < biasCenter.z) {
-        z += ((float)Math.random() - 0.35f) * shake;
+        z = (int)Math.round((float)z + ((float)Math.random() - 0.35f) * shake);
       } else {
-        z += ((float)Math.random() - 0.65f) * shake;
+        z = (int)Math.round((float)z + ((float)Math.random() - 0.65f) * shake);
       }
     }
-    
     
     cframe.setPosition(new PVector(x, y, z));
 
@@ -160,7 +159,7 @@ class CFrame {
   }
 
   PVector vectorToGlobalSpace(PVector vector) {
-    return rotation().matrix.mult(vector.get(), new PVector(0, 0, 0));
+    return rotation().matrix.mult(vector.copy(), new PVector(0, 0, 0));
   }
 }
 
@@ -189,7 +188,7 @@ void updateInput() {
 void updatePhysics(float deltaTick) {
   if (mousePressed) {
     for (int i = 0; i < bacteria.length; i++) {
-      PVector acceleration = biasCenter.get();
+      PVector acceleration = biasCenter.copy();
       acceleration.sub(bacteria[i].cframe.position());
       acceleration.mult(0.001);
       minVectorMagnitude(acceleration, BIAS_MINIMUM_ACCELERATION);
@@ -197,7 +196,7 @@ void updatePhysics(float deltaTick) {
     }
   } else {
     for (int i = 0; i < bacteria.length; i++) {
-      bacteria[i].acceleration = PVECTOR_ZERO.get();
+      bacteria[i].acceleration = PVECTOR_ZERO.copy();
     }
   }
 
@@ -220,7 +219,7 @@ void updateBurstState() {
   }
   if (canBurst && mouseChanged && !mousePressed) {
     for (int i = 0; i < bacteria.length; i++) {
-      bacteria[i].velocity.add(new PVector(randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(-2, 2)))
+      bacteria[i].velocity.add(new PVector(randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(-2, 2)));
       bacteria[i].velocity.mult(randomFloat(-10, -6));
       minVectorMagnitude(bacteria[i].velocity, 8);
       maxVectorMagnitude(bacteria[i].velocity, 32);
