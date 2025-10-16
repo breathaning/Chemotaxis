@@ -219,8 +219,8 @@ void updateBurstState() {
   }
   if (canBurst && mouseChanged && !mousePressed) {
     for (int i = 0; i < bacteria.length; i++) {
-      bacteria[i].velocity.add(new PVector(randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(-2, 2)));
-      bacteria[i].velocity.mult(randomFloat(-10, -6));
+      bacteria[i].velocity.add(new PVector((float)(Math.random() * 4) - 2, (float)(Math.random() * 4) - 2, (float)(Math.random() * 4) - 2));
+      bacteria[i].velocity.mult((float)(Math.random() * 4) - 10);
       minVectorMagnitude(bacteria[i].velocity, 8);
       maxVectorMagnitude(bacteria[i].velocity, 32);
     }
@@ -319,11 +319,7 @@ void updateLights() {
 
 // util functions 
 color randomColor() {
-  return color(randomFloat(0, 255), randomFloat(0, 255), randomFloat(0, 255));
-}
-
-float randomFloat(float min, float max) {
-  return min + (float)(Math.random() * (max - min));
+  return color((float)Math.random() * 255, (float)Math.random() * 255, (float)Math.random() * 255);
 }
 
 boolean isKeyPressed(char key) {
@@ -405,7 +401,7 @@ void setup() {
   cameraCFrame.setPosition(CAMERA_START_SETPOINT);
   for (int i = 0; i < bacteria.length; i++) {
     CFrame cframe = new CFrame();
-    cframe.rotateEuler(new PVector(randomFloat(0, TWO_PI), randomFloat(0, TWO_PI), randomFloat(0, TWO_PI)));
+    cframe.rotateEuler(new PVector((float)Math.random() * TWO_PI, (float)Math.random() * TWO_PI, (float)Math.random() * TWO_PI));
     float radius = (float)Math.sqrt(Math.random()) * (width + height) / 2;
     PVector position = cframe.vectorToGlobalSpace(new PVector(0, 0, radius));
     bacteria[i] = new Bacterium((int)position.x, (int)position.y, (int)position.z, randomColor());
@@ -422,6 +418,14 @@ void draw() {
   updateCamera();
   drawBackground();
   updateLights();
+  if (mousePressed) {
+    pushMatrix();
+    translate(biasCenter.x, biasCenter.y, biasCenter.z);
+    fill(255, 255, 255, 15);
+    noStroke();
+    sphere(28);
+    popMatrix();
+  }
   for (int i = 0; i < bacteria.length; i++) {
     pushMatrix();
     bacteria[i].show();
