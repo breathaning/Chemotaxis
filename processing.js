@@ -5244,7 +5244,7 @@
     Drawing2D.prototype.sphere = DrawingShared.prototype.a3DOnlyFunction;
     Drawing3D.prototype.sphere = function() {
       var sRad = arguments[0];
-      if (sphereDetailU < 3 || sphereDetailV < 2) p.sphereDetail(30);
+      if (sphereDetailU < 3 || sphereDetailV < 2) p.sphereDetail(8);
       var model = new PMatrix3D;
       model.scale(sRad, sRad, sRad);
       var view = new PMatrix3D;
